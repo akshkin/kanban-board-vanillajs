@@ -13,11 +13,12 @@ let backlogListArray = [];
 let progressListArray = [];
 let completeListArray = [];
 let onHoldListArray = [];
+
 let listArrays = [
-  backlogListArray,
-  progressListArray,
-  completeListArray,
-  onHoldListArray,
+  { backlogList: backlogListArray },
+  { progressList: progressListArray },
+  { completeList: completeListArray },
+  { onHoldList: onHoldListArray },
 ];
 
 // create list items for given column
@@ -32,8 +33,12 @@ function createElement(index, text) {
 function addToList(index) {
   const text = addItems[index].textContent;
 
-  listArrays[index].push(text);
+  const arrayNames = ["backlog", "progress", "complete", "onHold"];
+  const selectArray = listArrays[index];
+
+  selectArray[`${arrayNames[index]}List`].push(text);
   createElement(index, text);
+  saveToLocalStorage();
 }
 
 // show input box for adding item
@@ -49,10 +54,50 @@ function hideInputBox(index) {
   saveItemBtns[index].style.display = "none";
   addItemContainers[index].style.display = "none";
   addToList(index);
+  //   clear input box
   addItems[index].textContent = "";
+}
+
+function saveToLocalStorage() {
+  const arrayNames = ["backlog", "progress", "complete", "onHold"];
+  arrayNames.forEach((arrayName, index) => {
+    const selectedArray = listArrays[index];
+
+    localStorage.setItem(
+      `${arrayName}List`,
+      JSON.stringify(selectedArray[`${arrayName}List`])
+    );
+  });
+}
+
+function getSavedListFromLocalStorage() {
+  if (localStorage.getItem("backlogList")) {
+    backlogListArray = JSON.parse(localStorage.getItem("backlogList"));
+    progressListArray = JSON.parse(localStorage.getItem("progressList"));
+    completeListArray = JSON.parse(localStorage.getItem("completeList"));
+    onHoldListArray = JSON.parse(localStorage.getItem("onHoldList"));
+    updateDOM();
+  }
+}
+
+function updateDOM() {
+  backlogListEl.textContent = "";
+  backlogListArray.forEach((item, index) => createElement(index, item));
+
+  progressListEl.textContent = "";
+  progressListArray.forEach((item, index) => createElement(index, item));
+
+  completeListEl.textContent = "";
+  completeListArray.forEach((item, index) => createElement(index, item));
+
+  onHoldListEl.textContent = "";
+  onHoldListArray.forEach((item, index) => createElement(index, item));
 }
 
 // event listener for add items
 addBtns.forEach((btn, index) =>
   btn.addEventListener("click", () => showInputBox(index))
 );
+
+// on load
+getSavedListFromLocalStorage();
