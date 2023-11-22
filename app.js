@@ -9,36 +9,38 @@ const progressListEl = document.getElementById("progress-list");
 const completeListEl = document.getElementById("complete-list");
 const onHoldListEl = document.getElementById("on-hold-list");
 
-let backlogListArray = [];
-let progressListArray = [];
-let completeListArray = [];
-let onHoldListArray = [];
+const arrayNames = ["backlog", "progress", "complete", "onHold"];
 
 let listArrays = [
-  { backlogList: backlogListArray },
-  { progressList: progressListArray },
-  { completeList: completeListArray },
-  { onHoldList: onHoldListArray },
+  { backlogList: [] },
+  { progressList: [] },
+  { completeList: [] },
+  { onHoldList: [] },
 ];
 
+let draggedItem;
+let currentColumn;
+
 // create list items for given column
-function createElement(index, text) {
+function createElement(element, text) {
   const listItem = document.createElement("li");
   listItem.classList.add("drag-item");
   listItem.textContent = text;
-  listColumns[index].appendChild(listItem);
+  listItem.draggable = true;
+  listItem.setAttribute("ondragstart", "drag(event)");
+  element.appendChild(listItem);
 }
 
 // add created item to list array
 function addToList(index) {
   const text = addItems[index].textContent;
 
-  const arrayNames = ["backlog", "progress", "complete", "onHold"];
-  const selectArray = listArrays[index];
+  const selectedArray = listArrays[index];
 
-  selectArray[`${arrayNames[index]}List`].push(text);
-  createElement(index, text);
+  selectedArray[`${arrayNames[index]}List`].push(text);
+  createElement(listColumns[index], text);
   saveToLocalStorage();
+  updateDOM();
 }
 
 // show input box for adding item
@@ -54,12 +56,12 @@ function hideInputBox(index) {
   saveItemBtns[index].style.display = "none";
   addItemContainers[index].style.display = "none";
   addToList(index);
+
   //   clear input box
   addItems[index].textContent = "";
 }
 
 function saveToLocalStorage() {
-  const arrayNames = ["backlog", "progress", "complete", "onHold"];
   arrayNames.forEach((arrayName, index) => {
     const selectedArray = listArrays[index];
 
@@ -71,27 +73,78 @@ function saveToLocalStorage() {
 }
 
 function getSavedListFromLocalStorage() {
-  if (localStorage.getItem("backlogList")) {
-    backlogListArray = JSON.parse(localStorage.getItem("backlogList"));
-    progressListArray = JSON.parse(localStorage.getItem("progressList"));
-    completeListArray = JSON.parse(localStorage.getItem("completeList"));
-    onHoldListArray = JSON.parse(localStorage.getItem("onHoldList"));
-    updateDOM();
-  }
+  arrayNames.forEach((arrayName, index) => {
+    const selectedArray = listArrays[index];
+
+    const storedList = JSON.parse(localStorage.getItem(`${arrayName}List`));
+    selectedArray[`${arrayName}List`] = storedList || [];
+  });
+  updateDOM();
 }
 
 function updateDOM() {
   backlogListEl.textContent = "";
-  backlogListArray.forEach((item, index) => createElement(index, item));
+  listArrays[0].backlogList.forEach((item) =>
+    createElement(backlogListEl, item)
+  );
 
   progressListEl.textContent = "";
-  progressListArray.forEach((item, index) => createElement(index, item));
+  listArrays[1].progressList.forEach((item) =>
+    createElement(progressListEl, item)
+  );
 
   completeListEl.textContent = "";
-  completeListArray.forEach((item, index) => createElement(index, item));
+  listArrays[2].completeList.forEach((item) =>
+    createElement(completeListEl, item)
+  );
 
   onHoldListEl.textContent = "";
-  onHoldListArray.forEach((item, index) => createElement(index, item));
+  listArrays[3].onHoldList.forEach((item) => createElement(onHoldListEl, item));
+}
+
+// allow arrays to reflect drag and drop changes
+function rebuildArrays() {
+  listArrays[0].backlogList = Array.from(backlogListEl.children).map(
+    (item) => item.textContent
+  );
+  listArrays[1].progressList = Array.from(progressListEl.children).map(
+    (item) => item.textContent
+  );
+  listArrays[2].completeList = Array.from(completeListEl.children).map(
+    (item) => item.textContent
+  );
+  listArrays[3].onHoldList = Array.from(onHoldListEl.children).map(
+    (item) => item.textContent
+  );
+  saveToLocalStorage();
+}
+
+// when item starts dragging
+function drag(event) {
+  draggedItem = event.target;
+}
+
+// allow column to allow item to drop
+function allowDrop(event) {
+  event.preventDefault();
+}
+
+// drop item in column
+function drop(event) {
+  event.preventDefault();
+  //   remove background color
+  listColumns.forEach((column) => column.classList.remove("over"));
+
+  //   add item to column
+  const parentElement = listColumns[currentColumn];
+  parentElement.appendChild(draggedItem);
+  rebuildArrays();
+}
+
+// when item enters column
+function dragEnter(index) {
+  currentColumn = index;
+  listColumns[index].classList.add("over");
 }
 
 // event listener for add items
